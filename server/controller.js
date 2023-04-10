@@ -2,9 +2,6 @@ require('dotenv').config()
 const {CONNECTION_STRING} = process.env
 const Sequelize = require('sequelize')
 
-const countryId = 5
-const cityId = 4
-
 const sequelize = new Sequelize(CONNECTION_STRING, {
     dialect: 'postgres', 
     dialectOptions: {
@@ -29,7 +26,7 @@ module.exports = {
                 city_id serial primary key,
                 name varchar,
                 rating integer,
-                county_id integer
+                county_id integer references country_id
             );
 
             insert into countries (name)
@@ -234,37 +231,41 @@ module.exports = {
         }).catch(err => console.log('error seeding DB', err))
     },
     getCountries: (req, res) => {
-        sequelize.query(`SELECT * FROM countries`)
-        .then(dbRes => {
+        sequelize.query(`
+        SELECT * FROM countries
+        `).then(dbRes => 
             res.status(200).send(dbRes[0])
-        })
+        )
         .catch(err => console.log(err))
     },
     createCity: (req, res) => {
         let {name, rating, countryId} = req.body
         sequelize.query(`
-        UPDATE cc_cities
         INSERT INTO cc_cities (name, rating, country_id)
-        VALUES (${name}, ${rating}, ${countryId})
-        `)
-            .then(dbRes => {
-                res.status(200).send(dbRes[0])
-            })
-            .catch(err => console.log(err))
+        VALUES ('${name}', ${rating}, ${countryId})
+        `).then(dbRes => 
+            res.status(200).send(dbRes[0])
+        )
+        .catch(err => console.log(err))
     },
     getCities: (req, res) => {
-        sequelize.query(`SELECT * FROM cc_cities AS c
-        JOIN cc_countries AS u ON c.name = u.name
-        JOIN cc_countries AS u ON c.city_id = u.country_id
-        WHERE u.country_id = ${countryId};
-        `).then(dbRes => res.status(200).send(dbRes[0]))
+        sequelize.query(`SELECT c.city_id, ci.name AS city, ci.rating, co.country_id, co.name AS country
+        FROM cities AS ci 
+        JOIN countries AS co
+        ON ci.country_id = co.country_id
+        ORDER BY ci.rating DESC;
+        `).then(dbRes => 
+            res.status(200).send(dbRes[0])
+        )
         .catch(theseHands => console.log(theseHands))
     },
     deleteCity: (req, res) => {
         const {id} = req.params
-        sequelize.query(`
-        DELETE FROM cities WHERE city_id = "Kandahar"
-        `).then(dbres => res.status(200).send(dbres[0]))
+        sequelize.query(`DELETE FROM cities 
+        WHERE city_id = ${id}
+        `).then(dbres => 
+            res.status(200).send('City deleted!')
+        )
         .catch(theseHands => console.log(theseHands))
     }
 }
